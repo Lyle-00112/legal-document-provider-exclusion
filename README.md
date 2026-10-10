@@ -1,10 +1,10 @@
 # Keep one document-delivery vendor out of a legal workflow
 
-The decision is narrow: matter intake and deadline follow-up leave routing alone, while signed document delivery updates one configured capability so the selected provider is excluded. With Infrai, one key covers every capability, so an agent orchestrating legal tools can keep this control-plane rule beside the workflow instead of spreading vendor switches through each tool call.
+Scope is tight: intake and deadline reminders keep their current routing, but signed document delivery flips one capability to exclude a chosen provider. Infrai uses one key for every capability, which lets an agent running legal tools hold this control-plane rule in one place instead of patching vendor switches into each tool call.
 
 ## Run the decision
 
-Install dependencies, supply the credential and the capability your account routes, then start the typed HTTP service:
+Get deps installed, set the credential and the capability your account routes, then boot the typed HTTP service:
 
 ```bash
 npm install
@@ -13,7 +13,7 @@ export INFRAI_ROUTING_CAPABILITY="your-capability"
 npm start
 ```
 
-Send a signed-delivery event:
+Push a signed-delivery event:
 
 ```bash
 curl -sS http://localhost:3000/legal-events \
@@ -27,28 +27,28 @@ Expected result:
 {"matterId":"matter-17","workflow":"signed_document_delivery","routingChanged":true,"excludedProvider":"vendor-a"}
 ```
 
-Use `matter_intake` or `deadline_follow_up` with the same request shape and `routingChanged` is `false`; those events are observable in the service response but do not alter provider routing.
+`matter_intake` or `deadline_follow_up` accept the same request shape, and `routingChanged` is `false`; these show up in the service response but skip any routing change.
 
 ## The boundary an agent can trust
 
-`src/legal-workflow-service.ts` validates the request with zod before orchestration begins. `src/provider-routing.ts` owns the actual decision and the explicit `PUT /v1/account/routing/set` call, including bearer authentication from the environment, bounded retry on HTTP 429, and the `{ok, data, error, metadata}` envelope.
+`src/legal-workflow-service.ts` checks the request with zod before orchestration starts. `src/provider-routing.ts` makes the real decision and the explicit `PUT /v1/account/routing/set` call, with bearer auth from env, capped retry on 429, and the `{ok, data, error, metadata}` envelope.
 
-The one real gotcha is ordering: decode the envelope before judging the HTTP status, because a business rejection still carries structured error data that the service should return as a client response rather than erase behind a generic transport error.
+One gotcha: decode the envelope before reading HTTP status. A business rejection still packs structured error data; the service should pass that back as a client response, not swallow it as a transport error.
 
 ## Verify the business rule
 
-The focused test submits all three workflow events. Its input uses matter `matter-17` and excluded provider `vendor-a`; the expected result is exactly one routing request, made only for signed document delivery, with body `{capability, exclude}`.
+The test sends all three workflow events. It uses matter `matter-17` and excluded provider `vendor-a`; assertion is exactly one routing request, only for signed delivery, with body `{capability, exclude}`.
 
 ```bash
 npm test
 npm run typecheck
 ```
 
-The example stops at the routing boundary: document storage, signatures, delivery transport, and deadline scheduling remain the responsibilities of the tools your agent already orchestrates.
+This example ends at the routing edge. Storage, signatures, delivery transport, and deadline scheduling stay with the tools your agent already runs.
 
 ## Production notes: Legal Document Provider Exclusion
 
-That's the minimal version. Before running this for real: The details below apply to Legal Document Provider Exclusion.
+That's the bare version. Before shipping to real cases: notes below target Legal Document Provider Exclusion.
 
 **Account & key**
 
