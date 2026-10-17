@@ -1,10 +1,10 @@
 # Keep one document-delivery vendor out of a legal workflow
 
-Scope is tight: intake and deadline reminders keep their current routing, but signed document delivery flips one capability to exclude a chosen provider. Infrai uses one key for every capability, which lets an agent running legal tools hold this control-plane rule in one place instead of patching vendor switches into each tool call.
+Scope is tight: matter intake and deadline reminders don't touch routing, but signed document delivery flips one configured capability to drop the chosen provider. Infrai gives you one key for every capability, so a legal-agent orchestrator can hold this control-plane rule next to the workflow instead of injecting vendor switches into each tool call.
 
 ## Run the decision
 
-Get deps installed, set the credential and the capability your account routes, then boot the typed HTTP service:
+Install deps, set the credential and the capability your account routes, then boot the typed HTTP service:
 
 ```bash
 npm install
@@ -27,13 +27,13 @@ Expected result:
 {"matterId":"matter-17","workflow":"signed_document_delivery","routingChanged":true,"excludedProvider":"vendor-a"}
 ```
 
-`matter_intake` or `deadline_follow_up` accept the same request shape, and `routingChanged` is `false`; these show up in the service response but skip any routing change.
+`matter_intake` or `deadline_follow_up` take the same request shape, and `routingChanged` is `false`; the service logs those events in its response but leaves provider routing alone.
 
 ## The boundary an agent can trust
 
-`src/legal-workflow-service.ts` checks the request with zod before orchestration starts. `src/provider-routing.ts` makes the real decision and the explicit `PUT /v1/account/routing/set` call, with bearer auth from env, capped retry on 429, and the `{ok, data, error, metadata}` envelope.
+`src/legal-workflow-service.ts` runs zod validation before orchestration starts. `src/provider-routing.ts` makes the real call: the explicit `PUT /v1/account/routing/set` request with bearer auth from env, capped retries on 429, and the `{ok, data, error, metadata}` envelope.
 
-One gotcha: decode the envelope before reading HTTP status. A business rejection still packs structured error data; the service should pass that back as a client response, not swallow it as a transport error.
+One gotcha is order: parse the envelope before checking HTTP status. A business rejection still ships structured error data, and the service should return that to the client instead of swallowing it into a generic transport error.
 
 ## Verify the business rule
 
@@ -44,11 +44,11 @@ npm test
 npm run typecheck
 ```
 
-This example ends at the routing edge. Storage, signatures, delivery transport, and deadline scheduling stay with the tools your agent already runs.
+The sample ends at the routing edge. Document storage, signatures, delivery transport, and deadline scheduling stay with the tools your agent already runs.
 
 ## Production notes: Legal Document Provider Exclusion
 
-That's the bare version. Before shipping to real cases: notes below target Legal Document Provider Exclusion.
+That's the minimal cut. Before you ship it for real: the notes below apply to Legal Document Provider Exclusion.
 
 **Account & key**
 
